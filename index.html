@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<title>Juego CMD - ¿Qué hace este comando? (Redes + Básicos)</title>
+<style>
+  body {
+    margin:0;
+    height:100vh;
+    background: #0d1117;
+    color: #e6edf3;
+    font-family: Consolas, monospace;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+  h1 {
+    color: #58a6ff;
+    margin: 15px;
+    font-size: 2.1rem;
+  }
+  #canvas {
+    border: 2px solid #30363d;
+    background: #161b22;
+    border-radius: 8px;
+    box-shadow: 0 0 30px rgba(0,0,0,0.7);
+  }
+  #score {
+    font-size: 1.4rem;
+    margin: 10px;
+    color: #3fb950;
+  }
+</style>
+</head>
+<body>
+
+<h1>¿Qué hace este comando?</h1>
+<div id="score">Puntos: 0</div>
+<canvas id="canvas" width="780" height="520"></canvas>
+
+<script>
+// =============================================
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
+const scoreElement = document.getElementById("score");
+
+let score = 0;
+let currentQuestion = 0;
+
+// ────────────── Banco de preguntas ampliado (redes + básicos) ──────────────
+const questions = [
+  // Comandos básicos (originales)
+  { command: "DIR", options: ["Muestra lista de archivos y carpetas", "Cambia nombre de archivo", "Elimina directorio", "Copia archivos"], correct: 0 },
+  { command: "CD", options: ["Crea nuevo directorio", "Cambia directorio actual", "Muestra portapapeles", "Limpia pantalla"], correct: 1 },
+  { command: "CLS", options: ["Cierra CMD", "Limpia la pantalla", "Lista procesos", "Muestra fecha"], correct: 1 },
+  { command: "DEL", options: ["Elimina archivos", "Copia archivos", "Mueve archivos", "Crea archivo nuevo"], correct: 0 },
+  { command: "MKDIR", options: ["Muestra info disco", "Crea carpeta", "Elimina carpeta", "Renombra carpeta"], correct: 1 },
+  { command: "COPY", options: ["Copia archivos", "Muestra contenido archivo", "Borra archivos", "Cambia permisos"], correct: 0 },
+  { command: "TYPE", options: ["Muestra contenido texto", "Cambia tipo letra", "Crea zip", "Info sistema"], correct: 0 },
+
+  // Comandos de REDES (nuevos)
+  { command: "PING", options: ["Prueba conectividad a un host", "Muestra configuración IP", "Lista conexiones activas", "Traza ruta de paquetes"], correct: 0 },
+  { command: "IPCONFIG", options: ["Muestra configuración de red", "Limpia caché DNS", "Muestra tabla ARP", "Lista puertos abiertos"], correct: 0 },
+  { command: "TRACERT", options: ["Traza ruta hasta un destino", "Muestra IP local", "Libera IP", "Muestra vecinos red"], correct: 0 },
+  { command: "NETSTAT", options: ["Muestra conexiones y puertos activos", "Configura firewall", "Muestra hostname", "Lista adaptadores"], correct: 0 },
+  { command: "NSLOOKUP", options: ["Consulta DNS (resolución nombres)", "Muestra MAC address", "Reinicia adaptador", "Muestra rutas"], correct: 0 },
+  { command: "ARP", options: ["Muestra/tabla de correspondencia IP-MAC", "Envía paquetes ICMP", "Traza ruta", "Lista sesiones"], correct: 0 },
+  { command: "GETMAC", options: ["Muestra direcciones físicas (MAC)", "Muestra IP detallada", "Limpia DNS", "Muestra usuarios red"], correct: 0 },
+  { command: "HOSTNAME", options: ["Muestra el nombre del equipo"], correct: 0 },
+  { command: "ROUTE", options: ["Muestra o modifica tabla de rutas"], correct: 0 },
+  { command: "NETSH", options: ["Herramienta avanzada para configurar red"], correct: 0 },
+  { command: "NBTSTAT", options: ["Muestra estadísticas NetBIOS y caché nombres"], correct: 0 },
+  { command: "PATHPING", options: ["Combina ping + tracert (diagnóstico red)"], correct: 0 },
+  { command: "NET VIEW", options: ["Lista equipos o recursos compartidos en red"], correct: 0 },
+  { command: "NET USE", options: ["Conecta o desconecta recursos compartidos"], correct: 0 }
+];
+
+let selectedAnswer = -1;
+
+// ────────────── Dibujado ──────────────
+function draw() {
+  ctx.fillStyle = "#0d1117";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  // Comando grande
+  ctx.fillStyle = "#79c0ff";
+  ctx.font = "bold 42px Consolas";
+  ctx.textAlign = "center";
+  ctx.fillText(questions[currentQuestion].command, canvas.width/2, 90);
+
+  ctx.font = "23px Consolas";
+  ctx.fillStyle = "#c9d1d9";
+
+  const q = questions[currentQuestion];
+  for (let i = 0; i < q.options.length; i++) {
+    const y = 160 + i * 75;
+    
+    // Fondo opción
+    if (i === selectedAnswer) {
+      ctx.fillStyle = "#21262d";
+      ctx.fillRect(50, y-40, canvas.width-100, 65);
+      ctx.strokeStyle = "#58a6ff";
+      ctx.lineWidth = 3;
+      ctx.strokeRect(50, y-40, canvas.width-100, 65);
+    } else {
+      ctx.fillStyle = "#161b22";
+      ctx.fillRect(50, y-40, canvas.width-100, 65);
+    }
+
+    // Texto opción
+    ctx.fillStyle = (i === selectedAnswer) ? "#a5d6ff" : "#c9d1d9";
+    ctx.textAlign = "left";
+    // Ajuste para textos más largos → wrap simple
+    const text = `${i+1}. ${q.options[i]}`;
+    ctx.fillText(text, 80, y+10);
+  }
+
+  // Instrucción inferior
+  ctx.fillStyle = "#8b949e";
+  ctx.font = "20px Consolas";
+  ctx.textAlign = "center";
+  ctx.fillText("Clic en la opción correcta o presiona 1–4", canvas.width/2, canvas.height - 35);
+
+  scoreElement.textContent = `Puntos: ${score}`;
+}
+
+// ────────────── Lógica respuesta ──────────────
+function checkAnswer() {
+  if (selectedAnswer === -1) return;
+
+  const correct = questions[currentQuestion].correct;
+  
+  if (selectedAnswer === correct) {
+    score += 10;
+    showFeedback("¡Correcto! +10 puntos", "#3fb950");
+  } else {
+    showFeedback(`Incorrecto → era la ${correct+1}`, "#f85149");
+  }
+
+  setTimeout(() => {
+    selectedAnswer = -1;
+    currentQuestion = (currentQuestion + 1) % questions.length;
+    draw();
+  }, 1500);
+}
+
+function showFeedback(text, color) {
+  ctx.fillStyle = color + "55";
+  ctx.fillRect(0, canvas.height/2 - 70, canvas.width, 140);
+  
+  ctx.fillStyle = color;
+  ctx.font = "bold 38px Consolas";
+  ctx.textAlign = "center";
+  ctx.fillText(text, canvas.width/2, canvas.height/2 + 15);
+}
+
+// ────────────── Interacción ──────────────
+canvas.addEventListener("click", e => {
+  const rect = canvas.getBoundingClientRect();
+  const x = e.clientX - rect.left;
+  const y = e.clientY - rect.top;
+
+  if (x < 50 || x > canvas.width-50) return;
+
+  for (let i = 0; i < 4; i++) {
+    const optionY = 160 + i * 75;
+    if (y >= optionY-40 && y <= optionY+25) {
+      selectedAnswer = i;
+      draw();
+      checkAnswer();
+      break;
+    }
+  }
+});
+
+window.addEventListener("keydown", e => {
+  if (e.key >= "1" && e.key <= "4") {
+    selectedAnswer = Number(e.key) - 1;
+    draw();
+    checkAnswer();
+  }
+});
+
+// Inicio
+draw();
+</script>
+</body>
+</html>
+Cambios y mejoras realizadas:
